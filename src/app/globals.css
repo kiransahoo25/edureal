@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* Anti-wobble / Hardware Acceleration fix for smooth buttons */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}

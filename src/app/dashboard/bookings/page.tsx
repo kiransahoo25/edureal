@@ -16,7 +16,7 @@ type Booking = {
     date: string;
     start_time: string;
     end_time: string;
-  };
+  } | null;
   teacher_profiles: {
     id: string;
     user_id: string;
@@ -24,8 +24,8 @@ type Booking = {
     city: string;
     profiles: {
       full_name: string;
-    };
-  };
+    } | null;
+  } | null;
 };
 
 export default function MyBookingsPage() {
@@ -56,7 +56,6 @@ export default function MyBookingsPage() {
       setRole(userRole);
 
       if (userRole === "student") {
-        // Student: show their own bookings
         const { data } = await supabase
           .from("bookings")
           .select(
@@ -74,7 +73,6 @@ export default function MyBookingsPage() {
 
         if (data) setBookings(data as unknown as Booking[]);
       } else if (userRole === "teacher") {
-        // Teacher: show bookings on their profile
         const { data: teacherProfile } = await supabase
           .from("teacher_profiles")
           .select("id")
@@ -88,7 +86,10 @@ export default function MyBookingsPage() {
               `
               *,
               availability (date, start_time, end_time),
-              profiles!bookings_student_id_fkey (full_name)
+              teacher_profiles (
+                id, user_id, area, city,
+                profiles (full_name)
+              )
             `,
             )
             .eq("teacher_id", teacherProfile.id)
@@ -133,7 +134,14 @@ export default function MyBookingsPage() {
     if (error) {
       setMessage(`Error: ${error.message}`);
     } else {
-      setMessage("Booking confirmed! 🎉");
+      // Notify the student via email
+      fetch("/api/notify-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, type: "confirmed" }),
+      }).catch((err) => console.error("Notify failed:", err));
+
+      setMessage("Booking confirmed! Student has been emailed. 🎉");
       setBookings((prev) =>
         prev.map((b) =>
           b.id === bookingId ? { ...b, status: "confirmed" } : b,

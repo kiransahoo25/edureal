@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-// 1. Create Supabase client OUTSIDE the component
 const supabase = createClient();
 
 type Slot = {
@@ -16,21 +15,27 @@ type Slot = {
   booked_count: number;
 };
 
+// Helper to get tomorrow's date in YYYY-MM-DD format
+const getTomorrow = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split("T")[0];
+};
+
 export default function AvailabilityPage() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Form state
-  const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  // Pre-filled Form state
+  const [date, setDate] = useState(getTomorrow());
+  const [startTime, setStartTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("11:00");
   const [capacity, setCapacity] = useState("1");
 
   const router = useRouter();
 
-  // 2. Put the fetching logic inside useEffect to avoid dependency issues
   useEffect(() => {
     const fetchSlots = async () => {
       const {
@@ -65,9 +70,8 @@ export default function AvailabilityPage() {
     };
 
     fetchSlots();
-  }, [router]); // Only router is needed here now
+  }, [router]);
 
-  // Helper to refetch slots after add/delete
   const refreshSlots = async () => {
     const {
       data: { user },
@@ -90,6 +94,13 @@ export default function AvailabilityPage() {
 
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Quick validation
+    if (startTime >= endTime) {
+      setMessage("Error: End time must be after start time.");
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
@@ -122,9 +133,10 @@ export default function AvailabilityPage() {
       setMessage(`Error: ${error.message}`);
     } else {
       setMessage("Time slot added! 🎉");
-      setDate("");
-      setStartTime("");
-      setEndTime("");
+      // Reset to defaults so they can quickly add another slot
+      setDate(getTomorrow());
+      setStartTime("10:00");
+      setEndTime("11:00");
       setCapacity("1");
       await refreshSlots();
     }
@@ -145,13 +157,15 @@ export default function AvailabilityPage() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">My Availability</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900">
+            My Availability
+          </h1>
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-blue-600 hover:underline font-semibold"
+            className="text-blue-600 hover:underline font-semibold text-sm"
           >
             Back to Dashboard
           </button>
@@ -159,14 +173,14 @@ export default function AvailabilityPage() {
 
         {message && (
           <div
-            className={`p-3 rounded mb-4 text-sm font-medium ${message.includes("Error") ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}`}
+            className={`p-4 rounded-xl mb-6 text-sm font-medium ${message.includes("Error") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}
           >
             {message}
           </div>
         )}
 
         {/* Add Slot Form */}
-        <div className="bg-white p-6 rounded-xl shadow-md mb-8">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
           <h2 className="text-xl font-bold mb-4 text-gray-800">
             Add a New Time Slot
           </h2>
@@ -175,7 +189,7 @@ export default function AvailabilityPage() {
             className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end"
           >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Date
               </label>
               <input
@@ -183,11 +197,11 @@ export default function AvailabilityPage() {
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Start Time
               </label>
               <input
@@ -195,11 +209,11 @@ export default function AvailabilityPage() {
                 required
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 End Time
               </label>
               <input
@@ -207,11 +221,11 @@ export default function AvailabilityPage() {
                 required
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
                 Capacity
               </label>
               <input
@@ -220,13 +234,13 @@ export default function AvailabilityPage() {
                 required
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
               />
             </div>
             <button
               type="submit"
               disabled={saving}
-              className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 transition font-semibold"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-bold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition shadow-md w-full"
             >
               {saving ? "Adding..." : "Add Slot"}
             </button>
@@ -234,7 +248,7 @@ export default function AvailabilityPage() {
         </div>
 
         {/* Slots List */}
-        <div className="bg-white p-6 rounded-xl shadow-md">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-xl font-bold mb-4 text-gray-800">
             Your Upcoming Slots
           </h2>
@@ -247,11 +261,11 @@ export default function AvailabilityPage() {
               {slots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-gray-100"
+                  className="flex flex-col sm:flex-row justify-between sm:items-center p-4 bg-gray-50 rounded-xl border border-gray-200 gap-4 hover:border-blue-300 transition"
                 >
                   <div className="flex gap-6 items-center">
                     <div>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-bold text-gray-900 text-lg">
                         📅{" "}
                         {new Date(slot.date).toLocaleDateString("en-IN", {
                           weekday: "short",
@@ -259,20 +273,20 @@ export default function AvailabilityPage() {
                           month: "short",
                         })}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-gray-600 font-medium">
                         🕐 {slot.start_time.slice(0, 5)} -{" "}
                         {slot.end_time.slice(0, 5)}
                       </p>
                     </div>
-                    <div className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full border">
+                    <div className="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1.5 rounded-full">
                       👥 {slot.booked_count} / {slot.capacity} booked
                     </div>
                   </div>
                   <button
                     onClick={() => handleDelete(slot.id)}
-                    className="text-red-500 hover:bg-red-50 px-3 py-1 rounded-md transition text-sm font-medium"
+                    className="text-red-500 hover:bg-red-50 border border-red-100 px-4 py-2 rounded-xl transition text-sm font-semibold w-full sm:w-auto"
                   >
-                    Delete
+                    Delete Slot
                   </button>
                 </div>
               ))}

@@ -6,6 +6,17 @@ import { useRouter } from "next/navigation";
 
 const supabase = createClient();
 
+const ALL_SUBJECTS = [
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "English",
+  "Computer Science",
+  "History",
+  "Economics",
+];
+
 export default function TeacherProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,6 +30,7 @@ export default function TeacherProfilePage() {
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
   const [demoVideoUrl, setDemoVideoUrl] = useState("");
+  const [subjects, setSubjects] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -58,6 +70,7 @@ export default function TeacherProfilePage() {
         setArea(teacherProfile.area || "");
         setCity(teacherProfile.city || "");
         setDemoVideoUrl(teacherProfile.demo_video_url || "");
+        setSubjects(teacherProfile.subjects || []);
       }
 
       setLoading(false);
@@ -65,6 +78,14 @@ export default function TeacherProfilePage() {
 
     fetchProfile();
   }, [router]);
+
+  const toggleSubject = (subject: string) => {
+    setSubjects((prev) =>
+      prev.includes(subject)
+        ? prev.filter((s) => s !== subject)
+        : [...prev, subject],
+    );
+  };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,6 +134,12 @@ export default function TeacherProfilePage() {
     setSaving(true);
     setMessage(null);
 
+    if (subjects.length === 0) {
+      setMessage("Error: Please select at least one subject.");
+      setSaving(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -128,6 +155,7 @@ export default function TeacherProfilePage() {
         area,
         city,
         demo_video_url: demoVideoUrl,
+        subjects,
       },
       { onConflict: "user_id" },
     );
@@ -137,8 +165,6 @@ export default function TeacherProfilePage() {
       setSaving(false);
     } else {
       setMessage("Profile saved successfully! Redirecting... 🎉");
-
-      // Wait 1 second so they see the success message, then hard reload to dashboard
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 1000);
@@ -180,6 +206,32 @@ export default function TeacherProfilePage() {
         )}
 
         <form onSubmit={handleSave} className="space-y-6">
+          {/* SUBJECTS SECTION */}
+          <div className="bg-purple-50/50 p-6 rounded-2xl border border-purple-100">
+            <label className="block text-sm font-bold text-gray-800 mb-2">
+              📚 Subjects You Teach
+            </label>
+            <p className="text-xs text-gray-500 mb-4">
+              Select all that apply. Students will use this to find you.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {ALL_SUBJECTS.map((subject) => (
+                <button
+                  key={subject}
+                  type="button"
+                  onClick={() => toggleSubject(subject)}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all duration-200 ${
+                    subjects.includes(subject)
+                      ? "bg-purple-600 border-purple-600 text-white shadow-md"
+                      : "bg-white border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50"
+                  }`}
+                >
+                  {subjects.includes(subject) ? "✓ " : "+ "} {subject}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* VIDEO SECTION */}
           <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
             <label className="block text-sm font-bold text-gray-800 mb-2">
@@ -226,7 +278,7 @@ export default function TeacherProfilePage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-full bg-white border-2 border-dashed border-blue-300 text-blue-600 font-semibold py-4 rounded-xl hover:bg-blue-50 transition flex items-center justify-center gap-2"
+                  className="w-full bg-white border-2 border-dashed border-blue-300 text-blue-600 font-semibold py-4 rounded-xl hover:bg-blue-50 transition-colors duration-200 flex items-center justify-center gap-2"
                 >
                   {uploading ? (
                     <>
@@ -339,7 +391,7 @@ export default function TeacherProfilePage() {
           <button
             type="submit"
             disabled={saving || uploading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-bold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition shadow-md"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-bold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-colors duration-200 shadow-md"
           >
             {saving ? "Saving and redirecting..." : "Save Profile"}
           </button>

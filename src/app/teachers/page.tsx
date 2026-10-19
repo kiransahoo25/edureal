@@ -14,14 +14,29 @@ type Teacher = {
   hourly_fee: number;
   area: string;
   city: string;
+  subjects: string[];
   profiles: {
     full_name: string;
   } | null;
 };
 
+const ALL_SUBJECTS = [
+  "All",
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "English",
+  "Computer Science",
+  "History",
+  "Economics",
+];
+
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("All");
+  const [maxPrice, setMaxPrice] = useState<number>(2000);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,14 +57,24 @@ export default function TeachersPage() {
     fetchTeachers();
   }, []);
 
-  // Filter during render (no useEffect — cleaner and faster)
-  const filteredTeachers = teachers.filter(
-    (t) =>
+  // Advanced filtering logic
+  const filteredTeachers = teachers.filter((t) => {
+    // 1. Text Search (Name, City, Area, Qualification)
+    const matchesSearch =
       t.city?.toLowerCase().includes(search.toLowerCase()) ||
       t.area?.toLowerCase().includes(search.toLowerCase()) ||
       t.qualification?.toLowerCase().includes(search.toLowerCase()) ||
-      t.profiles?.full_name?.toLowerCase().includes(search.toLowerCase()),
-  );
+      t.profiles?.full_name?.toLowerCase().includes(search.toLowerCase());
+
+    // 2. Subject Filter
+    const matchesSubject =
+      selectedSubject === "All" || t.subjects?.includes(selectedSubject);
+
+    // 3. Price Filter
+    const matchesPrice = t.hourly_fee <= maxPrice;
+
+    return matchesSearch && matchesSubject && matchesPrice;
+  });
 
   if (loading)
     return (
@@ -61,28 +86,66 @@ export default function TeachersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
             Find your perfect teacher 🎓
           </h1>
           <p className="text-gray-600 text-lg">
-            Browse verified teachers by subject, city, or area
+            Browse verified teachers by subject, city, and budget.
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-8 relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span className="text-xl">🔍</span>
+        {/* Filter Bar */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-col lg:flex-row gap-6 items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              🔍 Search by name, city, or area
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Koramangala, Priya, M.Sc"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Search by city, area, or qualification (e.g. Bangalore, M.Sc, Koramangala)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none text-lg bg-white"
-          />
+
+          <div className="w-full lg:w-64">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              📚 Subject
+            </label>
+            <select
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition bg-white"
+            >
+              {ALL_SUBJECTS.map((sub) => (
+                <option key={sub} value={sub}>
+                  {sub}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-full lg:w-64">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-gray-700">
+                💰 Max Price
+              </label>
+              <span className="text-blue-600 font-bold text-sm">
+                ₹{maxPrice}/hr
+              </span>
+            </div>
+            <input
+              type="range"
+              min="100"
+              max="2000"
+              step="100"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              className="w-full accent-blue-600"
+            />
+          </div>
         </div>
 
         {/* Result count */}
@@ -91,7 +154,6 @@ export default function TeachersPage() {
             {filteredTeachers.length}
           </span>{" "}
           teacher{filteredTeachers.length !== 1 ? "s" : ""} found
-          {search && ` for "${search}"`}
         </p>
 
         {/* Teacher Grid */}
@@ -102,7 +164,7 @@ export default function TeachersPage() {
               No teachers found
             </h3>
             <p className="text-gray-600">
-              Try a different city, area, or qualification.
+              Try adjusting your filters or searching for a different city.
             </p>
           </div>
         ) : (
@@ -110,15 +172,13 @@ export default function TeachersPage() {
             {filteredTeachers.map((teacher) => (
               <div
                 key={teacher.id}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-200 border border-gray-100 hover:border-blue-200 overflow-hidden flex flex-col"
+                className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 hover:border-blue-200 transition-[transform,box-shadow,border-color] duration-200 flex flex-col overflow-hidden hover:-translate-y-1"
               >
-                {/* Colored top strip */}
                 <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500"></div>
 
                 <div className="p-6 flex flex-col flex-1">
-                  {/* Header with avatar */}
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
                       {teacher.profiles?.full_name?.charAt(0) || "T"}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -131,13 +191,29 @@ export default function TeachersPage() {
                     </div>
                   </div>
 
-                  {/* Bio */}
+                  {/* Subjects chips */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {teacher.subjects && teacher.subjects.length > 0 ? (
+                      teacher.subjects.map((sub) => (
+                        <span
+                          key={sub}
+                          className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md font-semibold border border-purple-100"
+                        >
+                          {sub}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs bg-gray-50 text-gray-500 px-2 py-1 rounded-md">
+                        No subjects listed
+                      </span>
+                    )}
+                  </div>
+
                   <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                     {teacher.bio || "No bio added yet."}
                   </p>
 
-                  {/* Info chips */}
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <div className="flex flex-wrap gap-2 mb-4 mt-auto">
                     <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
                       📍 {teacher.area || "Area"}, {teacher.city || "City"}
                     </span>
@@ -147,8 +223,7 @@ export default function TeachersPage() {
                     </span>
                   </div>
 
-                  {/* Price + button */}
-                  <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                  <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                     <div>
                       <p className="text-xs text-gray-500">Starting from</p>
                       <p className="text-xl font-bold text-blue-600">
@@ -160,7 +235,7 @@ export default function TeachersPage() {
                     </div>
                     <Link
                       href={`/teachers/${teacher.id}`}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition shadow-sm"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-sm"
                     >
                       Book Now
                     </Link>

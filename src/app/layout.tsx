@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Connect with expert teachers for physical classes near you.",
 };
 
+// ... (keep your imports and metadata the same)
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Navbar />
-        <main>{children}</main>
+        <main className="pt-28 pb-12">{children}</main>
       </body>
     </html>
   );

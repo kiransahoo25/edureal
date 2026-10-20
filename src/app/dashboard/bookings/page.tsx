@@ -154,6 +154,42 @@ export default function MyBookingsPage() {
     setSubmittingReview(false);
   };
 
+  // --- Helper Functions for Calendar & Maps ---
+
+  const generateCalendarLink = (booking: Booking) => {
+    if (!booking.availability?.date || !booking.availability?.start_time)
+      return "#";
+
+    const dateStr = booking.availability.date.replace(/-/g, "");
+    const startTimeStr = booking.availability.start_time
+      .replace(/:/g, "")
+      .slice(0, 6);
+    const endTimeStr = booking.availability.end_time
+      .replace(/:/g, "")
+      .slice(0, 6);
+
+    const start = `${dateStr}T${startTimeStr}`;
+    const end = `${dateStr}T${endTimeStr}`;
+
+    const title = encodeURIComponent(
+      `EduReal Class with ${booking.teacher_profiles?.profiles?.full_name || "Teacher"}`,
+    );
+    const location = encodeURIComponent(
+      `${booking.teacher_profiles?.area || ""} ${booking.teacher_profiles?.city || ""}`.trim(),
+    );
+    const details = encodeURIComponent(
+      `Your EduReal session. Amount: ₹${booking.amount}`,
+    );
+
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
+  };
+
+  const generateMapsLink = (booking: Booking) => {
+    const location =
+      `${booking.teacher_profiles?.area || ""} ${booking.teacher_profiles?.city || ""}`.trim();
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -269,47 +305,74 @@ export default function MyBookingsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
-                {role === "teacher" && booking.status === "pending" && (
-                  <>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap justify-between items-center gap-3">
+                {/* Add to Calendar & Maps (Only show if confirmed or completed) */}
+                {(booking.status === "confirmed" ||
+                  booking.status === "completed") && (
+                  <div className="flex gap-2">
+                    <a
+                      href={generateCalendarLink(booking)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-3 py-2 rounded-lg text-sm font-semibold transition text-white"
+                    >
+                      📅 Add to Calendar
+                    </a>
+                    <a
+                      href={generateMapsLink(booking)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-3 py-2 rounded-lg text-sm font-semibold transition text-white"
+                    >
+                      🗺️ Directions
+                    </a>
+                  </div>
+                )}
+
+                {/* Role-specific action buttons */}
+                <div className="flex gap-3 ml-auto">
+                  {role === "teacher" && booking.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => handleCancel(booking.id)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-4 py-2 rounded-lg transition text-sm font-semibold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleConfirm(booking.id)}
+                        className="bg-green-600 text-white hover:bg-green-500 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-[0_0_15px_rgba(22,163,74,0.4)]"
+                      >
+                        Confirm
+                      </button>
+                    </>
+                  )}
+                  {role === "teacher" && booking.status === "confirmed" && (
+                    <button
+                      onClick={() => handleComplete(booking.id)}
+                      className="bg-blue-600 text-white hover:bg-blue-500 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                    >
+                      Mark Completed
+                    </button>
+                  )}
+                  {role === "student" && booking.status === "completed" && (
+                    <button
+                      onClick={() => setReviewingBooking(booking.id)}
+                      className="bg-yellow-500 text-black hover:bg-yellow-400 px-4 py-2 rounded-lg transition text-sm font-bold shadow-[0_0_15px_rgba(234,179,8,0.4)]"
+                    >
+                      ⭐ Leave Review
+                    </button>
+                  )}
+                  {role === "student" && booking.status === "pending" && (
                     <button
                       onClick={() => handleCancel(booking.id)}
                       className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-4 py-2 rounded-lg transition text-sm font-semibold"
                     >
                       Cancel
                     </button>
-                    <button
-                      onClick={() => handleConfirm(booking.id)}
-                      className="bg-green-600 text-white hover:bg-green-500 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-[0_0_15px_rgba(22,163,74,0.4)]"
-                    >
-                      Confirm
-                    </button>
-                  </>
-                )}
-                {role === "teacher" && booking.status === "confirmed" && (
-                  <button
-                    onClick={() => handleComplete(booking.id)}
-                    className="bg-blue-600 text-white hover:bg-blue-500 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-[0_0_15px_rgba(37,99,235,0.4)]"
-                  >
-                    Mark Completed
-                  </button>
-                )}
-                {role === "student" && booking.status === "completed" && (
-                  <button
-                    onClick={() => setReviewingBooking(booking.id)}
-                    className="bg-yellow-500 text-black hover:bg-yellow-400 px-4 py-2 rounded-lg transition text-sm font-bold shadow-[0_0_15px_rgba(234,179,8,0.4)]"
-                  >
-                    ⭐ Leave Review
-                  </button>
-                )}
-                {role === "student" && booking.status === "pending" && (
-                  <button
-                    onClick={() => handleCancel(booking.id)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-4 py-2 rounded-lg transition text-sm font-semibold"
-                  >
-                    Cancel
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
 
               {reviewingBooking === booking.id && (

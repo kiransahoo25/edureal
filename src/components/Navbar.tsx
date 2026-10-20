@@ -112,6 +112,13 @@ export default function Navbar() {
                     >
                       Dashboard
                     </Link>
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      My Profile
+                    </Link>
                     {profile?.role === "teacher" && (
                       <Link
                         href="/dashboard/availability"

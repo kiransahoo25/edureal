@@ -8,15 +8,22 @@ import type { User } from "@supabase/supabase-js";
 
 const supabase = createClient();
 
-type Profile = {
-  full_name: string;
-  role: string;
+type Profile = { full_name: string; role: string };
+type Notif = {
+  id: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  link: string;
 };
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notif[]>([]);
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -33,6 +40,15 @@ export default function Navbar() {
           .eq("id", user.id)
           .single();
         setProfile(data);
+
+        // Fetch Notifications
+        const { data: notifs } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        if (notifs) setNotifications(notifs);
       }
     };
 
@@ -49,11 +65,25 @@ export default function Navbar() {
     router.refresh();
   };
 
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const markAsRead = async () => {
+    setNotifOpen(!notifOpen);
+    if (!notifOpen && unreadCount > 0 && user) {
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    }
+  };
+
   if (pathname === "/login" || pathname === "/signup") return null;
 
   return (
     <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4">
-      <nav className="glass-panel px-6 py-3 w-full max-w-5xl flex justify-between items-center rounded-full">
+      <nav className="glass-panel px-6 py-3 w-full max-w-5xl flex justify-between items-center rounded-full relative z-50">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
             EduReal
@@ -75,12 +105,51 @@ export default function Navbar() {
               >
                 Dashboard
               </Link>
-              <Link
-                href="/dashboard/bookings"
-                className="text-slate-300 hover:text-white font-medium transition-colors"
-              >
-                My Bookings
-              </Link>
+
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={markAsRead}
+                  className="relative p-2 text-slate-300 hover:text-white transition"
+                >
+                  🔔
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center text-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className="absolute right-0 mt-3 w-72 glass-panel border border-white/10 p-4 shadow-2xl">
+                    <h4 className="font-bold text-white mb-2 text-sm uppercase">
+                      Notifications
+                    </h4>
+                    {notifications.length === 0 ? (
+                      <p className="text-slate-400 text-sm">
+                        No new notifications.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {notifications.map((n) => (
+                          <Link
+                            key={n.id}
+                            href={n.link}
+                            onClick={() => setNotifOpen(false)}
+                            className={`block p-2 rounded-lg ${n.is_read ? "bg-transparent" : "bg-white/10"}`}
+                          >
+                            <p className="text-sm font-bold text-white">
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {n.message}
+                            </p>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="relative">
                 <button
@@ -94,38 +163,22 @@ export default function Navbar() {
                     {profile?.full_name?.split(" ")[0] || "User"}
                   </span>
                 </button>
-
                 {menuOpen && (
                   <div className="absolute right-0 mt-3 w-48 glass-panel py-2 border border-white/10">
-                    <div className="px-4 py-2 border-b border-white/10">
-                      <p className="text-sm font-semibold text-white">
-                        {profile?.full_name}
-                      </p>
-                      <p className="text-xs text-slate-400 capitalize">
-                        {profile?.role}
-                      </p>
-                    </div>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10"
-                    >
-                      Dashboard
-                    </Link>
                     <Link
                       href="/dashboard/profile"
                       onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                      className="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10"
                     >
                       My Profile
                     </Link>
-                    {profile?.role === "teacher" && (
+                    {profile?.role === "admin" && (
                       <Link
-                        href="/dashboard/availability"
+                        href="/admin"
                         onClick={() => setMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10"
+                        className="block px-4 py-2 text-sm text-yellow-400 hover:text-yellow-300 hover:bg-white/10"
                       >
-                        My Availability
+                        Admin Panel
                       </Link>
                     )}
                     <button
@@ -155,34 +208,6 @@ export default function Navbar() {
             </>
           )}
         </div>
-
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden p-2 text-white"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {menuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            )}
-          </svg>
-        </button>
       </nav>
     </div>
   );

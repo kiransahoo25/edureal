@@ -12,6 +12,7 @@ type Booking = {
   status: string;
   amount: number;
   created_at: string;
+  availability_id: string;
   availability: { date: string; start_time: string; end_time: string } | null;
   teacher_profiles: {
     id: string;
@@ -22,6 +23,15 @@ type Booking = {
   } | null;
 };
 
+type Slot = {
+  id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  booked_count: number;
+};
+
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +39,19 @@ export default function MyBookingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
 
+  // Review State
   const [reviewingBooking, setReviewingBooking] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Reschedule State
+  const [reschedulingBooking, setReschedulingBooking] =
+    useState<Booking | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedNewSlot, setSelectedNewSlot] = useState<string | null>(null);
+  const [submittingReschedule, setSubmittingReschedule] = useState(false);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -154,12 +173,58 @@ export default function MyBookingsPage() {
     setSubmittingReview(false);
   };
 
-  // --- Helper Functions for Calendar & Maps ---
+  const openReschedule = async (booking: Booking) => {
+    setReschedulingBooking(booking);
+    setLoadingSlots(true);
+    setSelectedNewSlot(null);
+
+    const today = new Date().toISOString().split("T")[0];
+    const { data } = await supabase
+      .from("availability")
+      .select("*")
+      .eq("teacher_id", booking.teacher_profiles?.id)
+      .gte("date", today)
+      .order("date", { ascending: true });
+
+    if (data) {
+      // We filter out the current slot using the new availability_id property
+      const validSlots = data.filter(
+        (s) => s.id !== booking.availability_id && s.booked_count < s.capacity,
+      );
+      setAvailableSlots(validSlots);
+    }
+    setLoadingSlots(false);
+  };
+
+  const submitReschedule = async () => {
+    if (!selectedNewSlot || !reschedulingBooking) return;
+    setSubmittingReschedule(true);
+    setMessage(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.rpc("reschedule_booking_v1", {
+      p_booking_id: reschedulingBooking.id,
+      p_new_availability_id: selectedNewSlot,
+      p_student_id: user.id,
+    });
+
+    if (error) {
+      setMessage(`Error: ${error.message}`);
+    } else {
+      setMessage("Booking successfully rescheduled! 🎉");
+      setReschedulingBooking(null);
+      window.location.reload();
+    }
+    setSubmittingReschedule(false);
+  };
 
   const generateCalendarLink = (booking: Booking) => {
     if (!booking.availability?.date || !booking.availability?.start_time)
       return "#";
-
     const dateStr = booking.availability.date.replace(/-/g, "");
     const startTimeStr = booking.availability.start_time
       .replace(/:/g, "")
@@ -167,21 +232,13 @@ export default function MyBookingsPage() {
     const endTimeStr = booking.availability.end_time
       .replace(/:/g, "")
       .slice(0, 6);
-
-    const start = `${dateStr}T${startTimeStr}`;
-    const end = `${dateStr}T${endTimeStr}`;
-
     const title = encodeURIComponent(
       `EduReal Class with ${booking.teacher_profiles?.profiles?.full_name || "Teacher"}`,
     );
     const location = encodeURIComponent(
       `${booking.teacher_profiles?.area || ""} ${booking.teacher_profiles?.city || ""}`.trim(),
     );
-    const details = encodeURIComponent(
-      `Your EduReal session. Amount: ₹${booking.amount}`,
-    );
-
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&location=${location}`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}T${startTimeStr}/${dateStr}T${endTimeStr}&location=${location}`;
   };
 
   const generateMapsLink = (booking: Booking) => {
@@ -213,7 +270,75 @@ export default function MyBookingsPage() {
     );
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      {reschedulingBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass-panel w-full max-w-lg p-6 relative max-h-[80vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-white mb-2">
+              Reschedule Class
+            </h3>
+            <p className="text-slate-400 text-sm mb-6">
+              Pick a new time slot for your session with{" "}
+              {reschedulingBooking.teacher_profiles?.profiles?.full_name}.
+            </p>
+
+            {loadingSlots ? (
+              <div className="text-center text-slate-400 py-8">
+                Loading available slots...
+              </div>
+            ) : availableSlots.length === 0 ? (
+              <div className="text-center text-slate-400 py-8">
+                This teacher has no other available slots right now.
+              </div>
+            ) : (
+              <div className="space-y-3 mb-6">
+                {availableSlots.map((slot) => (
+                  <button
+                    key={slot.id}
+                    onClick={() => setSelectedNewSlot(slot.id)}
+                    className={`w-full flex justify-between items-center p-4 rounded-xl border transition ${selectedNewSlot === slot.id ? "bg-blue-600/20 border-blue-500" : "bg-white/5 border-white/10 hover:border-white/30"}`}
+                  >
+                    <div className="text-left">
+                      <p className="font-bold text-white">
+                        📅{" "}
+                        {new Date(slot.date).toLocaleDateString("en-IN", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </p>
+                      <p className="text-slate-400 text-sm">
+                        🕐 {slot.start_time.slice(0, 5)} -{" "}
+                        {slot.end_time.slice(0, 5)}
+                      </p>
+                    </div>
+                    {selectedNewSlot === slot.id && (
+                      <span className="text-blue-400 font-bold">✓</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setReschedulingBooking(null)}
+                className="px-4 py-2 text-slate-400 font-semibold hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReschedule}
+                disabled={!selectedNewSlot || submittingReschedule}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-500 transition disabled:opacity-50"
+              >
+                {submittingReschedule ? "Confirming..." : "Confirm Reschedule"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-extrabold text-white">My Bookings</h1>
         <Link
@@ -305,9 +430,7 @@ export default function MyBookingsPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-wrap justify-between items-center gap-3">
-                {/* Add to Calendar & Maps (Only show if confirmed or completed) */}
                 {(booking.status === "confirmed" ||
                   booking.status === "completed") && (
                   <div className="flex gap-2">
@@ -330,8 +453,17 @@ export default function MyBookingsPage() {
                   </div>
                 )}
 
-                {/* Role-specific action buttons */}
-                <div className="flex gap-3 ml-auto">
+                <div className="flex gap-3 ml-auto items-center">
+                  {role === "student" &&
+                    (booking.status === "pending" ||
+                      booking.status === "confirmed") && (
+                      <button
+                        onClick={() => openReschedule(booking)}
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-4 py-2 rounded-lg transition text-sm font-semibold"
+                      >
+                        Reschedule
+                      </button>
+                    )}
                   {role === "teacher" && booking.status === "pending" && (
                     <>
                       <button

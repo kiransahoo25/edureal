@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
@@ -37,24 +37,79 @@ export default function TeachersPage() {
   const [maxPrice, setMaxPrice] = useState<number>(2000);
   const [loading, setLoading] = useState(true);
 
+  // Autocomplete State
+  const [allLocations, setAllLocations] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const fetchTeachers = async () => {
       const { data } = await supabase
         .from("teacher_profiles")
         .select(`*, profiles (full_name)`)
         .order("created_at", { ascending: false });
-      if (data) setTeachers(data as unknown as Teacher[]);
+
+      if (data) {
+        // Cast to our strict Teacher type instead of using 'any'
+        const typedTeachers = data as unknown as Teacher[];
+        setTeachers(typedTeachers);
+
+        // Extract unique cities and areas for suggestions
+        const locations = new Set<string>();
+        typedTeachers.forEach((t) => {
+          if (t.city) locations.add(t.city);
+          if (t.area) locations.add(t.area);
+        });
+        setAllLocations(Array.from(locations).sort());
+      }
       setLoading(false);
     };
     fetchTeachers();
   }, []);
 
+  // Handle clicking outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearch(value);
+
+    if (value.trim().length > 0) {
+      const filtered = allLocations.filter((loc) =>
+        loc.toLowerCase().includes(value.toLowerCase()),
+      );
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (location: string) => {
+    setSearch(location);
+    setShowSuggestions(false);
+  };
+
   const filteredTeachers = teachers.filter((t) => {
+    const searchLower = search.toLowerCase();
     const matchesSearch =
-      t.city?.toLowerCase().includes(search.toLowerCase()) ||
-      t.area?.toLowerCase().includes(search.toLowerCase()) ||
-      t.qualification?.toLowerCase().includes(search.toLowerCase()) ||
-      t.profiles?.full_name?.toLowerCase().includes(search.toLowerCase());
+      t.city?.toLowerCase().includes(searchLower) ||
+      t.area?.toLowerCase().includes(searchLower) ||
+      t.qualification?.toLowerCase().includes(searchLower) ||
+      t.profiles?.full_name?.toLowerCase().includes(searchLower);
+
     const matchesSubject =
       selectedSubject === "All" || t.subjects?.includes(selectedSubject);
     const matchesPrice = t.hourly_fee <= maxPrice;
@@ -80,8 +135,9 @@ export default function TeachersPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-panel p-6 mb-8 flex flex-col lg:flex-row gap-6 items-end shadow-lg">
-        <div className="flex-1 w-full">
+      <div className="glass-panel p-6 mb-8 flex flex-col lg:flex-row gap-6 items-end shadow-lg relative z-20">
+        {/* Autocomplete Search Box */}
+        <div className="flex-1 w-full relative" ref={searchRef}>
           <label className="block text-sm font-bold text-slate-300 mb-2">
             🔍 Search
           </label>
@@ -89,11 +145,33 @@ export default function TeachersPage() {
             type="text"
             placeholder="e.g. Koramangala, Priya, M.Sc"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
+            onFocus={() => {
+              if (search.length > 0) setShowSuggestions(true);
+            }}
             className="w-full px-4 py-3 rounded-xl bg-black/20 border border-white/10 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
           />
+
+          {/* Suggestions Dropdown */}
+          {showSuggestions && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+              <div className="text-xs font-bold text-slate-400 px-4 py-2 bg-white/5 border-b border-white/5 uppercase tracking-wider">
+                📍 Locations
+              </div>
+              {suggestions.map((loc, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSuggestionClick(loc)}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-blue-500/20 hover:text-white transition-colors flex items-center gap-2"
+                >
+                  <span className="text-blue-400">📍</span> {loc}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="w-full lg:w-64">
+
+        <div className="w-full lg:w-64 relative z-10">
           <label className="block text-sm font-bold text-slate-300 mb-2">
             📚 Subject
           </label>
@@ -109,7 +187,8 @@ export default function TeachersPage() {
             ))}
           </select>
         </div>
-        <div className="w-full lg:w-64">
+
+        <div className="w-full lg:w-64 relative z-10">
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-bold text-slate-300">
               💰 Max Price
@@ -130,7 +209,7 @@ export default function TeachersPage() {
         </div>
       </div>
 
-      <p className="text-sm text-slate-400 mb-6">
+      <p className="text-sm text-slate-400 mb-6 relative z-10">
         <span className="font-semibold text-white">
           {filteredTeachers.length}
         </span>{" "}
@@ -138,7 +217,7 @@ export default function TeachersPage() {
       </p>
 
       {filteredTeachers.length === 0 ? (
-        <div className="glass-panel p-16 text-center">
+        <div className="glass-panel p-16 text-center relative z-10">
           <div className="text-5xl mb-4">🔍</div>
           <h3 className="text-xl font-bold text-white mb-2">
             No teachers found
@@ -148,7 +227,7 @@ export default function TeachersPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
           {filteredTeachers.map((teacher) => (
             <div
               key={teacher.id}

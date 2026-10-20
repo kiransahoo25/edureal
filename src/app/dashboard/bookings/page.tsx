@@ -35,6 +35,12 @@ export default function MyBookingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
 
+  // Review State
+  const [reviewingBooking, setReviewingBooking] = useState<string | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   useEffect(() => {
     const fetchBookings = async () => {
       const {
@@ -45,7 +51,6 @@ export default function MyBookingsPage() {
         return;
       }
 
-      // Get user's role
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -107,21 +112,17 @@ export default function MyBookingsPage() {
 
   const handleCancel = async (bookingId: string) => {
     if (!confirm("Are you sure you want to cancel this booking?")) return;
-
     const { error } = await supabase
       .from("bookings")
       .update({ status: "cancelled" })
       .eq("id", bookingId);
-
-    if (error) {
-      setMessage(`Error: ${error.message}`);
-    } else {
-      setMessage("Booking cancelled.");
+    if (!error) {
       setBookings((prev) =>
         prev.map((b) =>
           b.id === bookingId ? { ...b, status: "cancelled" } : b,
         ),
       );
+      setMessage("Booking cancelled.");
     }
   };
 
@@ -130,24 +131,55 @@ export default function MyBookingsPage() {
       .from("bookings")
       .update({ status: "confirmed" })
       .eq("id", bookingId);
-
-    if (error) {
-      setMessage(`Error: ${error.message}`);
-    } else {
-      // Notify the student via email
+    if (!error) {
       fetch("/api/notify-booking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId, type: "confirmed" }),
       }).catch((err) => console.error("Notify failed:", err));
-
-      setMessage("Booking confirmed! Student has been emailed. 🎉");
       setBookings((prev) =>
         prev.map((b) =>
           b.id === bookingId ? { ...b, status: "confirmed" } : b,
         ),
       );
+      setMessage("Booking confirmed! Student has been emailed. 🎉");
     }
+  };
+
+  const handleComplete = async (bookingId: string) => {
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "completed" })
+      .eq("id", bookingId);
+    if (!error) {
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId ? { ...b, status: "completed" } : b,
+        ),
+      );
+      setMessage("Booking marked as completed.");
+    }
+  };
+
+  const submitReview = async (booking: Booking) => {
+    setSubmittingReview(true);
+    const { error } = await supabase.from("reviews").insert({
+      booking_id: booking.id,
+      teacher_id: booking.teacher_profiles?.id,
+      rating,
+      comment,
+    });
+
+    if (error) {
+      setMessage(`Error: ${error.message}`);
+    } else {
+      setMessage("Review submitted! Thank you. ⭐");
+      setReviewingBooking(null);
+      setComment("");
+      setRating(5);
+      // Mark booking as reviewed locally (optional, but we will just close the modal)
+    }
+    setSubmittingReview(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -176,7 +208,7 @@ export default function MyBookingsPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900">My Bookings</h1>
           <Link
             href="/dashboard"
             className="text-blue-600 hover:underline font-semibold"
@@ -187,19 +219,21 @@ export default function MyBookingsPage() {
 
         {message && (
           <div
-            className={`p-3 rounded mb-4 text-sm font-medium ${message.includes("Error") ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"}`}
+            className={`p-4 rounded-xl mb-6 text-sm font-bold ${message.includes("Error") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}
           >
             {message}
           </div>
         )}
 
         {bookings.length === 0 ? (
-          <div className="bg-white p-12 rounded-xl shadow-md text-center">
-            <p className="text-gray-500 mb-4">You have no bookings yet.</p>
+          <div className="bg-white p-12 rounded-2xl shadow-md text-center">
+            <p className="text-gray-500 mb-4 text-lg">
+              You have no bookings yet.
+            </p>
             {role === "student" && (
               <Link
                 href="/teachers"
-                className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
+                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition font-semibold shadow-md"
               >
                 Find a Teacher
               </Link>
@@ -210,7 +244,7 @@ export default function MyBookingsPage() {
             {bookings.map((booking) => (
               <div
                 key={booking.id}
-                className="bg-white p-6 rounded-xl shadow-md border border-gray-100"
+                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -227,15 +261,17 @@ export default function MyBookingsPage() {
                     )}
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${getStatusColor(booking.status)}`}
+                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(booking.status)}`}
                   >
                     {booking.status}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-700 bg-gray-50 p-4 rounded-lg mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-700 bg-gray-50 p-4 rounded-xl mb-4">
                   <div>
-                    <p className="text-gray-500 text-xs uppercase mb-1">Date</p>
+                    <p className="text-gray-500 text-xs uppercase font-bold mb-1">
+                      Date
+                    </p>
                     <p className="font-semibold">
                       📅{" "}
                       {booking.availability?.date
@@ -250,14 +286,16 @@ export default function MyBookingsPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase mb-1">Time</p>
+                    <p className="text-gray-500 text-xs uppercase font-bold mb-1">
+                      Time
+                    </p>
                     <p className="font-semibold">
                       🕐 {booking.availability?.start_time?.slice(0, 5)} -{" "}
                       {booking.availability?.end_time?.slice(0, 5)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs uppercase mb-1">
+                    <p className="text-gray-500 text-xs uppercase font-bold mb-1">
                       Amount
                     </p>
                     <p className="font-semibold text-blue-600">
@@ -266,22 +304,91 @@ export default function MyBookingsPage() {
                   </div>
                 </div>
 
-                {booking.status === "pending" && (
-                  <div className="flex justify-end gap-3">
-                    {role === "teacher" && (
+                <div className="flex justify-end gap-3">
+                  {/* TEACHER ACTIONS */}
+                  {role === "teacher" && booking.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => handleCancel(booking.id)}
+                        className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg transition text-sm font-semibold"
+                      >
+                        Cancel
+                      </button>
                       <button
                         onClick={() => handleConfirm(booking.id)}
-                        className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-lg transition text-sm font-medium"
+                        className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-sm"
                       >
                         Confirm Booking
                       </button>
-                    )}
+                    </>
+                  )}
+                  {role === "teacher" && booking.status === "confirmed" && (
+                    <button
+                      onClick={() => handleComplete(booking.id)}
+                      className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-sm"
+                    >
+                      Mark as Completed
+                    </button>
+                  )}
+
+                  {/* STUDENT ACTIONS */}
+                  {role === "student" && booking.status === "completed" && (
+                    <button
+                      onClick={() => setReviewingBooking(booking.id)}
+                      className="bg-yellow-500 text-white hover:bg-yellow-600 px-4 py-2 rounded-lg transition text-sm font-semibold shadow-sm"
+                    >
+                      ⭐ Leave a Review
+                    </button>
+                  )}
+                  {role === "student" && booking.status === "pending" && (
                     <button
                       onClick={() => handleCancel(booking.id)}
-                      className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg transition text-sm font-medium"
+                      className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg transition text-sm font-semibold"
                     >
                       Cancel
                     </button>
+                  )}
+                </div>
+
+                {/* REVIEW FORM (Shows inline if selected) */}
+                {reviewingBooking === booking.id && (
+                  <div className="mt-4 p-5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                    <h4 className="font-bold text-gray-900 mb-3">
+                      Rate your session
+                    </h4>
+                    <div className="flex gap-2 mb-4">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setRating(star)}
+                          className="text-3xl transition-transform hover:scale-110"
+                        >
+                          {star <= rating ? "⭐" : "☆"}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="How was the class? (Optional)"
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-gray-300 mb-3 focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100"
+                      rows={2}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setReviewingBooking(null)}
+                        className="px-4 py-2 text-gray-600 font-semibold hover:bg-gray-200 rounded-lg transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => submitReview(booking)}
+                        disabled={submittingReview}
+                        className="bg-yellow-500 text-white px-4 py-2 font-bold rounded-lg hover:bg-yellow-600 transition disabled:opacity-50"
+                      >
+                        {submittingReview ? "Submitting..." : "Submit Review"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

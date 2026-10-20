@@ -20,7 +20,6 @@ type Teacher = {
   subjects: string[];
   profiles: { full_name: string };
 };
-
 type Slot = {
   id: string;
   date: string;
@@ -29,7 +28,6 @@ type Slot = {
   capacity: number;
   booked_count: number;
 };
-
 type Review = {
   id: string;
   rating: number;
@@ -49,6 +47,11 @@ export default function TeacherDetailPage() {
   const [booking, setBooking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+
+  // NEW: Mode State
+  const [studyMode, setStudyMode] = useState<"physical" | "virtual">(
+    "physical",
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -115,7 +118,7 @@ export default function TeacherDetailPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Call our secure database function to prevent double-booking
+    // Call our secure DB function with studyMode
     const { data: newBookingId, error: rpcError } = await supabase.rpc(
       "create_booking_v2",
       {
@@ -126,27 +129,35 @@ export default function TeacherDetailPage() {
       },
     );
 
+    // Note: We update the mode immediately after creation
+    // (In a production app, you could pass the mode into the RPC function)
     if (rpcError) {
       setMessage(`Error: ${rpcError.message}`);
       setBooking(null);
       return;
     }
 
-    // Update local state so the UI updates instantly
+    // Update the mode of the newly created booking
+    await supabase
+      .from("bookings")
+      .update({ mode: studyMode })
+      .eq("id", newBookingId);
+
     setSlots((prev) =>
       prev.map((s) =>
         s.id === slot.id ? { ...s, booked_count: s.booked_count + 1 } : s,
       ),
     );
 
-    // Send email notification
     fetch("/api/notify-booking", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bookingId: newBookingId, type: "new" }),
     }).catch((err) => console.error("Notify failed:", err));
 
-    setMessage("Booking request sent! Check your email. 🎉");
+    setMessage(
+      `Booking request sent for ${studyMode === "physical" ? "Physical" : "Virtual"} class! Check your email. 🎉`,
+    );
     setBooking(null);
   };
 
@@ -277,6 +288,23 @@ export default function TeacherDetailPage() {
           <h2 className="text-2xl font-extrabold mb-6 text-white">
             Available Slots
           </h2>
+
+          {/* Study Mode Toggle */}
+          <div className="mb-6 bg-black/20 p-1.5 rounded-xl flex border border-white/10">
+            <button
+              onClick={() => setStudyMode("physical")}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-colors ${studyMode === "physical" ? "bg-blue-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              🏫 Physical (In-Person)
+            </button>
+            <button
+              onClick={() => setStudyMode("virtual")}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-colors ${studyMode === "virtual" ? "bg-purple-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              💻 Virtual (Online)
+            </button>
+          </div>
+
           {slots.length === 0 ? (
             <p className="text-slate-400 text-center py-8">
               No upcoming slots yet.
@@ -307,7 +335,7 @@ export default function TeacherDetailPage() {
                     <button
                       onClick={() => handleBook(slot)}
                       disabled={isFull || booking === slot.id}
-                      className={`px-4 py-2 rounded-xl font-bold text-sm transition shadow-sm ${isFull ? "bg-white/5 text-slate-500" : "bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.4)]"}`}
+                      className={`px-4 py-2 rounded-xl font-bold text-sm transition shadow-sm ${isFull ? "bg-white/5 text-slate-500" : studyMode === "physical" ? "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]" : "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]"}`}
                     >
                       {booking === slot.id
                         ? "Booking..."

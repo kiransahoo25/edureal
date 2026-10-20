@@ -20,6 +20,7 @@ type Teacher = {
   subjects: string[];
   profiles: { full_name: string };
 };
+
 type Slot = {
   id: string;
   date: string;
@@ -28,6 +29,7 @@ type Slot = {
   capacity: number;
   booked_count: number;
 };
+
 type Review = {
   id: string;
   rating: number;
@@ -101,13 +103,9 @@ export default function TeacherDetailPage() {
   const handleBook = async (slot: Slot) => {
     setBooking(slot.id);
     setMessage(null);
+
     if (role === "teacher") {
       setMessage("Error: Teachers cannot book other teachers.");
-      setBooking(null);
-      return;
-    }
-    if (slot.booked_count >= slot.capacity) {
-      setMessage("Error: This slot is already full.");
       setBooking(null);
       return;
     }
@@ -117,40 +115,35 @@ export default function TeacherDetailPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: insertedBooking, error: bookingError } = await supabase
-      .from("bookings")
-      .insert({
-        student_id: user.id,
-        teacher_id: teacherId,
-        availability_id: slot.id,
-        status: "pending",
-        amount: teacher?.hourly_fee || 0,
-      })
-      .select()
-      .single();
+    // Call our secure database function to prevent double-booking
+    const { data: newBookingId, error: rpcError } = await supabase.rpc(
+      "create_booking_v2",
+      {
+        p_student_id: user.id,
+        p_teacher_id: teacherId,
+        p_availability_id: slot.id,
+        p_amount: teacher?.hourly_fee || 0,
+      },
+    );
 
-    if (bookingError || !insertedBooking) {
-      setMessage(
-        `Error: ${bookingError?.message || "Could not create booking"}`,
-      );
+    if (rpcError) {
+      setMessage(`Error: ${rpcError.message}`);
       setBooking(null);
       return;
     }
 
-    await supabase
-      .from("availability")
-      .update({ booked_count: slot.booked_count + 1 })
-      .eq("id", slot.id);
+    // Update local state so the UI updates instantly
     setSlots((prev) =>
       prev.map((s) =>
         s.id === slot.id ? { ...s, booked_count: s.booked_count + 1 } : s,
       ),
     );
 
+    // Send email notification
     fetch("/api/notify-booking", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId: insertedBooking.id, type: "new" }),
+      body: JSON.stringify({ bookingId: newBookingId, type: "new" }),
     }).catch((err) => console.error("Notify failed:", err));
 
     setMessage("Booking request sent! Check your email. 🎉");
@@ -209,8 +202,10 @@ export default function TeacherDetailPage() {
         ← Back to Teachers
       </Link>
 
-      <div className="glass-panel p-8 mb-8">
-        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center mb-6">
+      <div className="glass-panel p-8 mb-8 relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+
+        <div className="relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center mb-6">
           <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-lg border border-white/20 flex-shrink-0">
             {teacher.profiles?.full_name?.charAt(0) || "T"}
           </div>
@@ -240,7 +235,7 @@ export default function TeacherDetailPage() {
           </div>
         </div>
 
-        <div className="bg-black/20 rounded-2xl p-5 border border-white/10 mb-6 shadow-inner">
+        <div className="bg-black/20 rounded-2xl p-5 border border-white/10 mb-6 shadow-inner relative z-10">
           <h3 className="font-bold text-white mb-2">About the Teacher</h3>
           <p className="text-slate-300 leading-relaxed">{teacher.bio}</p>
           {teacher.subjects && teacher.subjects.length > 0 && (
@@ -258,7 +253,7 @@ export default function TeacherDetailPage() {
         </div>
 
         {teacher.demo_video_url && (
-          <div>
+          <div className="relative z-10">
             <h3 className="font-bold text-white mb-3 flex items-center gap-2">
               🎥 Watch a Demo Session
             </h3>
@@ -278,7 +273,7 @@ export default function TeacherDetailPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="glass-panel p-8">
+        <div className="glass-panel p-8 spatial-card">
           <h2 className="text-2xl font-extrabold mb-6 text-white">
             Available Slots
           </h2>
@@ -327,7 +322,7 @@ export default function TeacherDetailPage() {
           )}
         </div>
 
-        <div className="glass-panel p-8">
+        <div className="glass-panel p-8 spatial-card">
           <h2 className="text-2xl font-extrabold mb-6 text-white">Reviews</h2>
           {reviews.length === 0 ? (
             <p className="text-slate-400 text-center py-8">No reviews yet.</p>

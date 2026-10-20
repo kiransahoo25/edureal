@@ -13,9 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// ... (keep your imports the same)
+
 export const metadata: Metadata = {
   title: "EduReal - Find & Book Tutors",
   description: "Connect with expert teachers for physical classes near you.",
+};
+
+// ADD THIS BLOCK RIGHT HERE
+export const viewport = {
+  themeColor: "#020617",
 };
 
 // ... (keep your imports and metadata the same)

@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const supabase = createClient();
-
 const ALL_SUBJECTS = [
   "Mathematics",
   "Physics",
@@ -50,7 +49,6 @@ export default function TeacherProfilePage() {
         .select("role")
         .eq("id", user.id)
         .single();
-
       if (profile?.role !== "teacher") {
         router.push("/dashboard");
         return;
@@ -61,7 +59,6 @@ export default function TeacherProfilePage() {
         .select("*")
         .eq("user_id", user.id)
         .single();
-
       if (teacherProfile) {
         setBio(teacherProfile.bio || "");
         setQualification(teacherProfile.qualification || "");
@@ -72,10 +69,8 @@ export default function TeacherProfilePage() {
         setDemoVideoUrl(teacherProfile.demo_video_url || "");
         setSubjects(teacherProfile.subjects || []);
       }
-
       setLoading(false);
     };
-
     fetchProfile();
   }, [router]);
 
@@ -90,7 +85,6 @@ export default function TeacherProfilePage() {
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 50 * 1024 * 1024) {
       setMessage("Error: Video is too large. Please upload a file under 50MB.");
       return;
@@ -98,7 +92,6 @@ export default function TeacherProfilePage() {
 
     setUploading(true);
     setMessage(null);
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -106,12 +99,10 @@ export default function TeacherProfilePage() {
 
     const fileExt = file.name.split(".").pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("demos")
-      .upload(filePath, file);
-
+      .upload(fileName, file);
     if (uploadError) {
       setMessage(`Upload Error: ${uploadError.message}`);
       setUploading(false);
@@ -120,13 +111,10 @@ export default function TeacherProfilePage() {
 
     const {
       data: { publicUrl },
-    } = supabase.storage.from("demos").getPublicUrl(filePath);
-
+    } = supabase.storage.from("demos").getPublicUrl(fileName);
     setDemoVideoUrl(publicUrl);
     setUploading(false);
-    setMessage(
-      'Video uploaded successfully! Don\'t forget to click "Save Profile" below. 🎥',
-    );
+    setMessage("Video uploaded successfully! 🎥");
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -173,25 +161,25 @@ export default function TeacherProfilePage() {
 
   if (loading)
     return (
-      <div className="p-8 text-center text-gray-600">Loading profile...</div>
+      <div className="text-center text-slate-400 p-8">Loading profile...</div>
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
-      <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="glass-panel p-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold text-gray-900 mb-1">
+            <h1 className="text-3xl font-extrabold text-white mb-1">
               Teacher Profile
             </h1>
-            <p className="text-gray-600">
+            <p className="text-slate-400">
               Update your details to attract more students.
             </p>
           </div>
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="text-blue-600 hover:underline font-semibold text-sm"
+            className="text-blue-400 hover:text-blue-300 font-semibold text-sm transition-colors"
           >
             Back to Dashboard
           </button>
@@ -199,32 +187,24 @@ export default function TeacherProfilePage() {
 
         {message && (
           <div
-            className={`p-4 rounded-xl mb-6 text-sm font-medium ${message.includes("Error") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}
+            className={`p-4 rounded-xl mb-6 text-sm font-medium ${message.includes("Error") ? "bg-red-500/20 text-red-200 border border-red-500/30" : "bg-green-500/20 text-green-200 border border-green-500/30"}`}
           >
             {message}
           </div>
         )}
 
         <form onSubmit={handleSave} className="space-y-6">
-          {/* SUBJECTS SECTION */}
-          <div className="bg-purple-50/50 p-6 rounded-2xl border border-purple-100">
-            <label className="block text-sm font-bold text-gray-800 mb-2">
+          <div className="bg-purple-500/10 p-6 rounded-2xl border border-purple-500/20">
+            <label className="block text-sm font-bold text-slate-200 mb-2">
               📚 Subjects You Teach
             </label>
-            <p className="text-xs text-gray-500 mb-4">
-              Select all that apply. Students will use this to find you.
-            </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 mt-3">
               {ALL_SUBJECTS.map((subject) => (
                 <button
                   key={subject}
                   type="button"
                   onClick={() => toggleSubject(subject)}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all duration-200 ${
-                    subjects.includes(subject)
-                      ? "bg-purple-600 border-purple-600 text-white shadow-md"
-                      : "bg-white border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50"
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${subjects.includes(subject) ? "bg-purple-600 border-purple-500 text-white shadow-[0_0_10px_rgba(147,51,234,0.5)]" : "bg-white/5 border-white/10 text-slate-400 hover:border-white/30 hover:text-white"}`}
                 >
                   {subjects.includes(subject) ? "✓ " : "+ "} {subject}
                 </button>
@@ -232,79 +212,54 @@ export default function TeacherProfilePage() {
             </div>
           </div>
 
-          {/* VIDEO SECTION */}
-          <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
-            <label className="block text-sm font-bold text-gray-800 mb-2">
+          <div className="bg-blue-500/10 p-6 rounded-2xl border border-blue-500/20">
+            <label className="block text-sm font-bold text-slate-200 mb-2">
               🎥 Demo Video (Highly Recommended)
             </label>
-            <p className="text-xs text-gray-500 mb-4">
-              Upload a short video from your device OR paste a YouTube link.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Option 1: Paste a link
-                </label>
-                <input
-                  type="url"
-                  value={demoVideoUrl}
-                  onChange={(e) => setDemoVideoUrl(e.target.value)}
-                  className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition bg-white"
-                  placeholder="https://www.youtube.com/watch?v=... or .mp4 link"
-                />
-              </div>
+            <div className="space-y-4 mt-3">
+              <input
+                type="url"
+                value={demoVideoUrl}
+                onChange={(e) => setDemoVideoUrl(e.target.value)}
+                className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
+                placeholder="https://www.youtube.com/watch?v=... or .mp4 link"
+              />
 
               <div className="flex items-center gap-4">
-                <div className="flex-1 border-t border-gray-300"></div>
-                <span className="text-xs text-gray-400 font-semibold uppercase">
+                <div className="flex-1 border-t border-white/10"></div>
+                <span className="text-xs text-slate-500 font-semibold uppercase">
                   OR
                 </span>
-                <div className="flex-1 border-t border-gray-300"></div>
+                <div className="flex-1 border-t border-white/10"></div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Option 2: Upload from device
-                </label>
-                <input
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
-                  ref={fileInputRef}
-                  onChange={handleVideoUpload}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="w-full bg-white border-2 border-dashed border-blue-300 text-blue-600 font-semibold py-4 rounded-xl hover:bg-blue-50 transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  {uploading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xl">📤</span> Click to upload video
-                      (.mp4, .mov)
-                    </>
-                  )}
-                </button>
-              </div>
-
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                ref={fileInputRef}
+                onChange={handleVideoUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full bg-white/5 border-2 border-dashed border-blue-500/30 text-blue-400 font-semibold py-4 rounded-xl hover:bg-white/10 hover:border-blue-500/50 transition flex items-center justify-center gap-2"
+              >
+                {uploading
+                  ? "Uploading..."
+                  : "📤 Click to upload video (.mp4, .mov)"}
+              </button>
               {demoVideoUrl && !uploading && (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium flex items-center gap-2">
-                  <span className="text-lg">✅</span> Video is ready to be
-                  saved!
+                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-400 font-medium">
+                  ✅ Video ready to be saved!
                 </div>
               )}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">
+            <label className="block text-sm font-bold text-slate-300 mb-2">
               Bio / About Me
             </label>
             <textarea
@@ -312,14 +267,14 @@ export default function TeacherProfilePage() {
               rows={4}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+              className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
               placeholder="I have 5 years of experience teaching Mathematics..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
                 Qualification
               </label>
               <input
@@ -327,12 +282,12 @@ export default function TeacherProfilePage() {
                 required
                 value={qualification}
                 onChange={(e) => setQualification(e.target.value)}
-                className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
                 placeholder="M.Sc. Mathematics"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
                 Experience (Years)
               </label>
               <input
@@ -340,7 +295,7 @@ export default function TeacherProfilePage() {
                 required
                 value={experience}
                 onChange={(e) => setExperience(e.target.value)}
-                className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
                 placeholder="5"
               />
             </div>
@@ -348,7 +303,7 @@ export default function TeacherProfilePage() {
 
           <div className="grid grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
                 Hourly Fee (₹)
               </label>
               <input
@@ -356,12 +311,12 @@ export default function TeacherProfilePage() {
                 required
                 value={fee}
                 onChange={(e) => setFee(e.target.value)}
-                className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
                 placeholder="500"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
                 Area
               </label>
               <input
@@ -369,12 +324,12 @@ export default function TeacherProfilePage() {
                 required
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
-                className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
                 placeholder="Koramangala"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-slate-300 mb-2">
                 City
               </label>
               <input
@@ -382,7 +337,7 @@ export default function TeacherProfilePage() {
                 required
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="block w-full rounded-xl border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                className="block w-full rounded-xl bg-black/20 border border-white/10 p-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:outline-none"
                 placeholder="Bangalore"
               />
             </div>
@@ -391,7 +346,7 @@ export default function TeacherProfilePage() {
           <button
             type="submit"
             disabled={saving || uploading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-bold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition-colors duration-200 shadow-md"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 transition shadow-[0_0_20px_rgba(79,70,229,0.4)]"
           >
             {saving ? "Saving and redirecting..." : "Save Profile"}
           </button>

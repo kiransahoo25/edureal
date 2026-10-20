@@ -20,7 +20,6 @@ export default function LoginPage() {
     customPassword?: string,
   ) => {
     if (e) e.preventDefault();
-
     const loginEmail = customEmail || email;
     const loginPassword = customPassword || password;
 
@@ -50,150 +49,96 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side — Form */}
-      <div className="flex-1 flex items-center justify-center bg-white px-4 sm:px-6 lg:px-8 py-12">
-        <div className="w-full max-w-md">
-          <Link href="/" className="inline-block mb-10">
-            <span className="text-3xl font-extrabold text-blue-600">
-              EduReal
-            </span>
-          </Link>
+    <div className="flex items-center justify-center min-h-[85vh] px-4">
+      <div className="glass-panel w-full max-w-md p-8 relative overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/30 rounded-full blur-3xl"></div>
 
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-            Welcome back 👋
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Log in to continue your learning journey.
-          </p>
+        <Link href="/" className="inline-block mb-8 relative z-10">
+          <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+            EduReal
+          </span>
+        </Link>
 
-          {/* DEMO ACCOUNTS SECTION */}
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-8">
-            <h3 className="font-bold text-blue-900 mb-3 text-sm uppercase tracking-wide">
-              🚀 Try EduReal Instantly
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => fillDemo("student")}
-                disabled={loading}
-                className="bg-white border-2 border-blue-200 hover:border-blue-500 text-blue-700 font-semibold py-3 px-4 rounded-xl transition flex flex-col items-center justify-center gap-1 shadow-sm"
-              >
-                <span className="text-xl">🎓</span>
-                <span>Demo Student</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemo("teacher")}
-                disabled={loading}
-                className="bg-white border-2 border-purple-200 hover:border-purple-500 text-purple-700 font-semibold py-3 px-4 rounded-xl transition flex flex-col items-center justify-center gap-1 shadow-sm"
-              >
-                <span className="text-xl">👨‍🏫</span>
-                <span>Demo Teacher</span>
-              </button>
-            </div>
-            <p className="text-xs text-blue-600 mt-3 text-center">
-              Click above to auto-fill and login.
-            </p>
-          </div>
+        <h1 className="text-3xl font-extrabold text-white mb-2 relative z-10">
+          Welcome back 👋
+        </h1>
+        <p className="text-slate-400 mb-8 relative z-10">
+          Log in to continue your learning journey.
+        </p>
 
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">
-                Or log in manually
-              </span>
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6 text-sm">
-              ⚠️ {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
-                placeholder="••••••••"
-              />
-            </div>
-
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-8 relative z-10 shadow-inner">
+          <h3 className="font-bold text-slate-200 mb-3 text-sm uppercase tracking-wide">
+            🚀 Try Instantly
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
             <button
-              type="submit"
+              onClick={() => fillDemo("student")}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 transition shadow-lg hover:shadow-xl"
+              className="bg-white/10 border border-white/10 hover:bg-white/20 text-white font-semibold py-3 rounded-xl transition flex flex-col items-center gap-1"
             >
-              {loading ? "Logging in..." : "Log In"}
+              <span className="text-xl">🎓</span> Student
             </button>
-          </form>
-
-          <p className="mt-6 text-center text-gray-600">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-blue-600 hover:underline font-semibold"
+            <button
+              onClick={() => fillDemo("teacher")}
+              disabled={loading}
+              className="bg-white/10 border border-white/10 hover:bg-white/20 text-white font-semibold py-3 rounded-xl transition flex flex-col items-center gap-1"
             >
-              Sign up free
-            </Link>
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side — Illustration */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 relative overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl"></div>
-
-        <div className="relative flex flex-col justify-center px-16 text-white">
-          <div className="text-6xl mb-6">🎓</div>
-          <h2 className="text-4xl font-extrabold mb-4 leading-tight">
-            Your learning journey continues here.
-          </h2>
-          <p className="text-blue-100 text-lg mb-8">
-            Pick up right where you left off. Your teachers, your schedule, your
-            progress.
-          </p>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3">
-              <span className="text-2xl">✅</span>
-              <span className="font-medium">Verified teachers near you</span>
-            </div>
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3">
-              <span className="text-2xl">📅</span>
-              <span className="font-medium">Instant booking & reminders</span>
-            </div>
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3">
-              <span className="text-2xl">⭐</span>
-              <span className="font-medium">Rate & review your teachers</span>
-            </div>
+              <span className="text-xl">👨‍🏫</span> Teacher
+            </button>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-xl mb-6 text-sm relative z-10">
+            ⚠️ {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-5 relative z-10">
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl bg-black/20 border border-white/10 px-4 py-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-xl bg-black/20 border border-white/10 px-4 py-3 text-white placeholder-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+              placeholder="••••••••"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-500 hover:to-purple-500 transition shadow-[0_0_20px_rgba(79,70,229,0.4)] disabled:opacity-50"
+          >
+            {loading ? "Logging in..." : "Log In"}
+          </button>
+        </form>
+
+        <p className="mt-8 text-center text-slate-400 relative z-10">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/signup"
+            className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+          >
+            Sign up free
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -18,11 +18,8 @@ type Teacher = {
   user_id: string;
   demo_video_url: string | null;
   subjects: string[];
-  profiles: {
-    full_name: string;
-  };
+  profiles: { full_name: string };
 };
-
 type Slot = {
   id: string;
   date: string;
@@ -31,7 +28,6 @@ type Slot = {
   capacity: number;
   booked_count: number;
 };
-
 type Review = {
   id: string;
   rating: number;
@@ -99,20 +95,17 @@ export default function TeacherDetailPage() {
 
       setLoading(false);
     };
-
     init();
   }, [teacherId, router]);
 
   const handleBook = async (slot: Slot) => {
     setBooking(slot.id);
     setMessage(null);
-
     if (role === "teacher") {
       setMessage("Error: Teachers cannot book other teachers.");
       setBooking(null);
       return;
     }
-
     if (slot.booked_count >= slot.capacity) {
       setMessage("Error: This slot is already full.");
       setBooking(null);
@@ -124,7 +117,6 @@ export default function TeacherDetailPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Direct Booking (No Payment Gateway)
     const { data: insertedBooking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
@@ -167,13 +159,13 @@ export default function TeacherDetailPage() {
 
   if (loading)
     return (
-      <div className="p-8 text-center text-gray-600">
+      <div className="text-center text-slate-400 p-8">
         Loading teacher profile...
       </div>
     );
   if (!teacher)
     return (
-      <div className="p-8 text-center text-red-500">Teacher not found.</div>
+      <div className="text-center text-red-400 p-8">Teacher not found.</div>
     );
 
   const renderVideo = () => {
@@ -209,171 +201,158 @@ export default function TeacherDetailPage() {
       : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <Link
-          href="/teachers"
-          className="text-blue-600 hover:underline mb-6 inline-block font-semibold"
-        >
-          ← Back to Teachers
-        </Link>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <Link
+        href="/teachers"
+        className="text-blue-400 hover:text-blue-300 mb-6 inline-block font-semibold transition-colors"
+      >
+        ← Back to Teachers
+      </Link>
 
-        <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 mb-8">
-          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center mb-6">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-xl flex-shrink-0">
-              {teacher.profiles?.full_name?.charAt(0) || "T"}
-            </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-extrabold text-gray-900 mb-1">
-                {teacher.profiles?.full_name}
-              </h1>
-              <p className="text-lg text-blue-600 font-medium mb-2">
-                {teacher.qualification}
-              </p>
-
-              <div className="flex flex-wrap gap-3 text-sm text-gray-600">
-                <span className="bg-gray-100 px-3 py-1 rounded-full font-medium">
-                  📍 {teacher.area}, {teacher.city}
+      <div className="glass-panel p-8 mb-8">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center mb-6">
+          <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-lg border border-white/20 flex-shrink-0">
+            {teacher.profiles?.full_name?.charAt(0) || "T"}
+          </div>
+          <div className="flex-1">
+            <h1 className="text-3xl font-extrabold text-white mb-1">
+              {teacher.profiles?.full_name}
+            </h1>
+            <p className="text-lg text-blue-400 font-medium mb-2">
+              {teacher.qualification}
+            </p>
+            <div className="flex flex-wrap gap-3 text-sm text-slate-300">
+              <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                📍 {teacher.area}, {teacher.city}
+              </span>
+              <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                🎓 {teacher.experience_years} years experience
+              </span>
+              <span className="bg-green-500/20 text-green-300 font-bold px-3 py-1 rounded-full border border-green-500/20">
+                ₹{teacher.hourly_fee}/hr
+              </span>
+              {averageRating && (
+                <span className="bg-yellow-500/20 text-yellow-300 font-bold px-3 py-1 rounded-full border border-yellow-500/20 flex items-center gap-1">
+                  ⭐ {averageRating} ({reviews.length})
                 </span>
-                <span className="bg-gray-100 px-3 py-1 rounded-full font-medium">
-                  🎓 {teacher.experience_years} years experience
-                </span>
-                <span className="bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full">
-                  ₹{teacher.hourly_fee}/hr
-                </span>
-                {averageRating && (
-                  <span className="bg-yellow-100 text-yellow-700 font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                    ⭐ {averageRating} ({reviews.length} reviews)
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           </div>
+        </div>
 
-          <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 mb-6">
-            <h3 className="font-bold text-gray-900 mb-2">About the Teacher</h3>
-            <p className="text-gray-700 leading-relaxed">{teacher.bio}</p>
-            {teacher.subjects && teacher.subjects.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {teacher.subjects.map((sub) => (
-                  <span
-                    key={sub}
-                    className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold"
-                  >
-                    {sub}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {teacher.demo_video_url && (
-            <div>
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                🎥 Watch a Demo Session
-              </h3>
-              <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-xl border-4 border-gray-900">
-                {renderVideo()}
-              </div>
+        <div className="bg-black/20 rounded-2xl p-5 border border-white/10 mb-6 shadow-inner">
+          <h3 className="font-bold text-white mb-2">About the Teacher</h3>
+          <p className="text-slate-300 leading-relaxed">{teacher.bio}</p>
+          {teacher.subjects && teacher.subjects.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {teacher.subjects.map((sub) => (
+                <span
+                  key={sub}
+                  className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-full font-bold"
+                >
+                  {sub}
+                </span>
+              ))}
             </div>
           )}
         </div>
 
-        {message && (
-          <div
-            className={`p-4 rounded-xl mb-6 text-sm font-bold ${message.includes("Error") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}
-          >
-            {message}
+        {teacher.demo_video_url && (
+          <div>
+            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+              🎥 Watch a Demo Session
+            </h3>
+            <div className="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/20">
+              {renderVideo()}
+            </div>
           </div>
         )}
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
-            <h2 className="text-2xl font-extrabold mb-6 text-gray-900">
-              Available Time Slots
-            </h2>
-            {slots.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                No upcoming slots yet.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {slots.map((slot) => {
-                  const isFull = slot.booked_count >= slot.capacity;
-                  return (
-                    <div
-                      key={slot.id}
-                      className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-200"
-                    >
-                      <div>
-                        <p className="font-bold text-gray-900">
-                          📅{" "}
-                          {new Date(slot.date).toLocaleDateString("en-IN", {
-                            weekday: "short",
-                            day: "numeric",
-                            month: "short",
-                          })}
-                        </p>
-                        <p className="text-gray-600 font-medium text-sm">
-                          🕐 {slot.start_time.slice(0, 5)} -{" "}
-                          {slot.end_time.slice(0, 5)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleBook(slot)}
-                        disabled={isFull || booking === slot.id}
-                        className={`px-4 py-2 rounded-xl font-bold text-sm transition shadow-sm ${
-                          isFull
-                            ? "bg-gray-300 text-gray-500"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
-                      >
-                        {booking === slot.id
-                          ? "Booking..."
-                          : isFull
-                            ? "Full"
-                            : "Book Now"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      {message && (
+        <div
+          className={`p-4 rounded-xl mb-6 text-sm font-bold shadow-lg ${message.includes("Error") ? "bg-red-500/20 text-red-200 border border-red-500/30" : "bg-green-500/20 text-green-200 border border-green-500/30"}`}
+        >
+          {message}
+        </div>
+      )}
 
-          <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
-            <h2 className="text-2xl font-extrabold mb-6 text-gray-900">
-              Student Reviews
-            </h2>
-            {reviews.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                No reviews yet. Be the first to book and review!
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {reviews.map((rev) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="glass-panel p-8">
+          <h2 className="text-2xl font-extrabold mb-6 text-white">
+            Available Slots
+          </h2>
+          {slots.length === 0 ? (
+            <p className="text-slate-400 text-center py-8">
+              No upcoming slots yet.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {slots.map((slot) => {
+                const isFull = slot.booked_count >= slot.capacity;
+                return (
                   <div
-                    key={rev.id}
-                    className="p-4 bg-gray-50 rounded-2xl border border-gray-200"
+                    key={slot.id}
+                    className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10 hover:border-white/20 transition"
                   >
-                    <div className="flex text-yellow-500 mb-2">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <span key={i}>{i < rev.rating ? "⭐" : "☆"}</span>
-                      ))}
-                    </div>
-                    {rev.comment && (
-                      <p className="text-gray-700 text-sm mb-2">
-                        {rev.comment}
+                    <div>
+                      <p className="font-bold text-white">
+                        📅{" "}
+                        {new Date(slot.date).toLocaleDateString("en-IN", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
                       </p>
-                    )}
-                    <p className="text-xs text-gray-400">
-                      {new Date(rev.created_at).toLocaleDateString()}
-                    </p>
+                      <p className="text-slate-400 font-medium text-sm">
+                        🕐 {slot.start_time.slice(0, 5)} -{" "}
+                        {slot.end_time.slice(0, 5)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleBook(slot)}
+                      disabled={isFull || booking === slot.id}
+                      className={`px-4 py-2 rounded-xl font-bold text-sm transition shadow-sm ${isFull ? "bg-white/5 text-slate-500" : "bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.4)]"}`}
+                    >
+                      {booking === slot.id
+                        ? "Booking..."
+                        : isFull
+                          ? "Full"
+                          : "Book Now"}
+                    </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="glass-panel p-8">
+          <h2 className="text-2xl font-extrabold mb-6 text-white">Reviews</h2>
+          {reviews.length === 0 ? (
+            <p className="text-slate-400 text-center py-8">No reviews yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((rev) => (
+                <div
+                  key={rev.id}
+                  className="p-4 bg-white/5 rounded-2xl border border-white/10"
+                >
+                  <div className="flex text-yellow-400 mb-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i}>{i < rev.rating ? "⭐" : "☆"}</span>
+                    ))}
+                  </div>
+                  {rev.comment && (
+                    <p className="text-slate-300 text-sm mb-2">{rev.comment}</p>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    {new Date(rev.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
